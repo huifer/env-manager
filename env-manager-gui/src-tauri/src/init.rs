@@ -3,6 +3,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 
 use log::{error, info, LevelFilter};
+use serde::{Deserialize, Serialize};
 
 // 定义枚举表示不同的 Shell
 #[derive(Debug)]
@@ -25,8 +26,7 @@ impl ShellType {
     }
 }
 
-// 函数用于判断当前使用的 Shell
-fn detect_shell() -> ShellType {
+// 函数用于判断当前使用的 Shell fn detect_shell() -> ShellType {
     // 获取 $SHELL 环境变量的值
     if let Some(shell_path) = env::var_os("SHELL") {
         let shell_str = shell_path.to_string_lossy().to_lowercase();
@@ -45,80 +45,98 @@ fn detect_shell() -> ShellType {
     }
 }
 
-fn main() {
-    env_logger::Builder::from_default_env()
-        .filter_level(LevelFilter::Info)
-        .init();
 
-
-    // setup();
-
+pub fn read_env_config() -> Vec<EnvManager> {
     if let Ok(home_directory) = get_home_directory().ok_or("无法获取 HOME 目录") {
         if let Ok(file_contents) = read_file_content(format!("{}/env_manager/customer", home_directory).as_str()) {
             let vec = parse_source_lines(file_contents.as_str());
 
 
-            let mut all_results = String::new();
-
-            for x in vec {
-                // 将 source_string 结果追加到字符串
-                all_results.push_str(&x.source_string());
-            }
-
-            // 打印合并后的字符串
-            println!("{}", all_results);
-
-
-            ;
-            if let Err(err) = write_string_to_file(format!("{}/env_manager/customer", home_directory).as_str(), all_results.as_str()) {
-                eprintln!("Error: {}", err);
-            } else {
-                println!("String written to file successfully.");
-            }
+            return vec;
         };
     };
+    return Vec::new();
 }
 
-#[derive(Debug)]
-struct EnvManager {
+pub fn init_pj() {
+    env_logger::Builder::from_default_env().filter_level(LevelFilter::Info).init();
+
+
+    setup();
+
+    // if let Ok(home_directory) = get_home_directory().ok_or("无法获取 HOME 目录") {
+    //     if let Ok(file_contents) = read_file_content(format!("{}/env_manager/customer", home_directory).as_str()) {
+    //         let vec = parse_source_lines(file_contents.as_str());
+    //
+    //
+    //         let mut all_results = String::new();
+    //
+    //         for x in vec {
+    //             // 将 source_string 结果追加到字符串
+    //             all_results.push_str(&x.source_string());
+    //         }
+    //
+    //         // 打印合并后的字符串
+    //         println!("{}", all_results);
+    //
+    //
+    //         ;
+    //         if let Err(err) = write_string_to_file(format!("{}/env_manager/customer", home_directory).as_str(), all_results.as_str()) {
+    //             eprintln!("Error: {}", err);
+    //         } else {
+    //             println!("String written to file successfully.");
+    //         }
+    //     };
+    // };
+}
+
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EnvManager {
     pub name: EnvKeyName,
     pub value: String,
 }
 
 
 impl EnvManager {
+    pub(crate) fn new(p0: EnvKeyName, p1: &str) -> EnvManager {
+        return EnvManager {
+            name: p0,
+            value: p1.to_string(),
+        };
+    }
     pub fn source_string(&self) -> String {
-        format!("export {}={}\n", self.name, self.value)
+        format!("export {}={}\nexport {}_BIN={}/bin", self.name, self.value, self.name, self.value)
     }
 }
 
 fn parse_source_lines(text: &str) -> Vec<EnvManager> {
-    text.lines()
-        .filter_map(|line| {
-            let parts: Vec<&str> = line.trim().splitn(2, '=').collect();
-            if parts.len() == 2 {
-                let name = parts[0].trim_start_matches("export").trim();
+    text.lines().filter_map(|line| {
+        let parts: Vec<&str> = line.trim().splitn(2, '=').collect();
+        if parts.len() == 2 {
+            let name = parts[0].trim_start_matches("export").trim();
 
-                Some(EnvManager {
-                    name: EnvKeyName::from_str(name).unwrap(),
-                    value: parts[1].trim().to_string(),
-                })
-            } else {
-                None
-            }
-        })
-        .collect()
+            Some(EnvManager {
+                name: EnvKeyName::from_str(name).unwrap(),
+                value: parts[1].trim().to_string(),
+            })
+        } else {
+            None
+        }
+    }).collect()
 }
 
-#[derive(Debug)]
-enum EnvKeyName {
+#[derive(Debug, Serialize, Deserialize)]
+pub enum EnvKeyName {
     TestHome,
     JavaHome,
     PythonHome,
     MavenHome,
     GradleHome,
+    RustHome,
     NodeHome,
     GoHome,
+    NONO,
 }
 
 impl EnvKeyName {
@@ -129,9 +147,36 @@ impl EnvKeyName {
             "PYTHON_HOME" => Some(EnvKeyName::PythonHome),
             "MAVEN_HOME" => Some(EnvKeyName::MavenHome),
             "GRADLE_HOME" => Some(EnvKeyName::GradleHome),
+            "RUST_HOME" => Some(EnvKeyName::RustHome),
             "NODE_HOME" => Some(EnvKeyName::NodeHome),
             "GO_HOME" => Some(EnvKeyName::GoHome),
             _ => None,
+        }
+    }
+
+    pub fn from_la(s: &str) -> EnvKeyName {
+        match s {
+            "Java" => EnvKeyName::JavaHome,
+            "Python" => EnvKeyName::PythonHome,
+            "Maven" => EnvKeyName::MavenHome,
+            "Gradle" => EnvKeyName::GradleHome,
+            "Rust" => EnvKeyName::GradleHome,
+            "Node" => EnvKeyName::NodeHome,
+            "Go" => EnvKeyName::GoHome,
+            _ => EnvKeyName::NONO,
+        }
+    }
+    pub fn to_lag(&self) -> &str {
+        match self {
+            EnvKeyName::TestHome => "test",
+            EnvKeyName::JavaHome => "Java",
+            EnvKeyName::PythonHome => "Python",
+            EnvKeyName::MavenHome => "Maven",
+            EnvKeyName::GradleHome => "Gradle",
+            EnvKeyName::NodeHome => "Node",
+            EnvKeyName::GoHome => "Go",
+            EnvKeyName::NONO => "NONO",
+            EnvKeyName::RustHome => { "Rust" }
         }
     }
 }
@@ -145,15 +190,16 @@ impl fmt::Display for EnvKeyName {
             EnvKeyName::MavenHome => "MAVEN_HOME",
             EnvKeyName::GradleHome => "GRADLE_HOME",
             EnvKeyName::NodeHome => "NODE_HOME",
+            EnvKeyName::RustHome => "RUST_HOME",
             EnvKeyName::GoHome => "GO_HOME",
+            EnvKeyName::NONO => { "NONO" }
         };
         write!(f, "{}", name)
     }
 }
 
 
-/// 初始化程序，创建一些所需文件
-fn setup() {
+/// 初始化程序，创建一些所需文件 fn setup() {
 // 调用函数检测当前 Shell
     let current_shell = detect_shell();
     let _sh = "source ~/env_manager/customer";
@@ -167,6 +213,7 @@ fn setup() {
             println!("程序执行完成。");
         }
         create_file_if_not_exists(format!("{}/env_manager/customer", home_directory).as_str(), "").expect("创建配置文件失败");
+        create_file_if_not_exists(format!("{}/env_manager/config.json", home_directory).as_str(), "[]").expect("创建配置文件失败");
     }
 
 
@@ -208,7 +255,7 @@ fn setup() {
     }
 }
 
-fn read_file_content(file_path: &str) -> Result<String, io::Error> {
+pub(crate) fn read_file_content(file_path: &str) -> Result<String, io::Error> {
     info!("文件地址: {}", file_path);
     // 尝试打开文件
     let file_contents = fs::read_to_string(file_path)?;
@@ -222,18 +269,14 @@ fn content_has_text(file_contents: &str) -> bool {
     return file_contents.contains(_sh);
 }
 
-fn get_home_directory() -> Option<String> {
+pub(crate) fn get_home_directory() -> Option<String> {
     env::var_os("HOME").map(|path| path.to_string_lossy().into_owned())
 }
 
 
 fn append_to_file(file_path: &str, text: &str) -> Result<(), io::Error> {
     // 以追加模式打开文件
-    let mut file = OpenOptions::new()
-        .write(true)
-        .append(true)
-        .create(true)
-        .open(file_path)?;
+    let mut file = OpenOptions::new().write(true).append(true).create(true).open(file_path)?;
 
     // 获取文件大小
     let file_size = file.metadata()?.len();
@@ -279,13 +322,9 @@ fn create_file_if_not_exists(file_path: &str, content: &str) -> Result<(), io::E
     Ok(())
 }
 
-fn write_string_to_file(file_path: &str, content: &str) -> Result<(), io::Error> {
+pub(crate) fn write_string_to_file(file_path: &str, content: &str) -> Result<(), io::Error> {
     // 以写入模式打开文件
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true) // 清空文件内容
-        .open(file_path)?;
+    let mut file = OpenOptions::new().write(true).create(true).truncate(true) // 清空文件内容.open(file_path)?;
 
     // 写入字符串到文件
     write!(file, "{}", content)?;
