@@ -94,12 +94,6 @@ const openFile = async () => {
   }
 }
 
-const og = async () => {
-  await invoke("load_data").then((d) => {
-    console.log(d);
-  });
-
-}
 const usingPath = async (index: any, bol: boolean) => {
   console.log("索引 + ", index);
   await invoke("using_path", {index: index, bol: bol}).then(
