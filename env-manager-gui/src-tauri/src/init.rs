@@ -26,7 +26,8 @@ impl ShellType {
     }
 }
 
-// 函数用于判断当前使用的 Shell fn detect_shell() -> ShellType {
+// 函数用于判断当前使用的 Shell
+fn detect_shell() -> ShellType {
     // 获取 $SHELL 环境变量的值
     if let Some(shell_path) = env::var_os("SHELL") {
         let shell_str = shell_path.to_string_lossy().to_lowercase();
@@ -199,7 +200,8 @@ impl fmt::Display for EnvKeyName {
 }
 
 
-/// 初始化程序，创建一些所需文件 fn setup() {
+/// 初始化程序，创建一些所需文件
+fn setup() {
 // 调用函数检测当前 Shell
     let current_shell = detect_shell();
     let _sh = "source ~/env_manager/customer";
@@ -324,7 +326,8 @@ fn create_file_if_not_exists(file_path: &str, content: &str) -> Result<(), io::E
 
 pub(crate) fn write_string_to_file(file_path: &str, content: &str) -> Result<(), io::Error> {
     // 以写入模式打开文件
-    let mut file = OpenOptions::new().write(true).create(true).truncate(true) // 清空文件内容.open(file_path)?;
+    let mut file = OpenOptions::new().write(true).create(true).truncate(true).open(file_path)?;
+
 
     // 写入字符串到文件
     write!(file, "{}", content)?;
